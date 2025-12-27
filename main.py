@@ -21,7 +21,7 @@ class GraphScene(QGraphicsScene):
         super().__init__()
         self.setSceneRect(0, 0, 800, 800)
         self.graph = Graph() 
-        #self.graph.import_graph()
+        self.graph.import_graph()
         self.current_mode = self.DRAW_MODE
         self.node_counter = 0
         self.nodeID = 0
@@ -301,6 +301,7 @@ class MainWindow(QMainWindow):
         self.undirected_graph.triggered.connect(lambda: self.scene.set_undirected_graph())
 
         self.update_node_table()
+        self.update_edge_table()
 
     def setup_node_table(self):
         self.node_table.setColumnCount(3)
@@ -335,6 +336,24 @@ class MainWindow(QMainWindow):
             self.node_table.setItem(row, 2, y)
         
         self.node_table.blockSignals(False)
+        
+    def update_edge_table(self):
+        edge_list = self.scene.graph.edge_list
+
+        self.edge_table.blockSignals(True)
+        self.edge_table.setRowCount(len(edge_list)/3)
+
+        for row in range(0, len(edge_list), 3):
+            print(edge_list[row], edge_list[row + 1], edge_list[row + 2])
+            source = QTableWidgetItem(str(edge_list[row]))
+            target = QTableWidgetItem(str(edge_list[row + 1]))
+            cost = QTableWidgetItem('' if edge_list[row + 2] == 'None' else str(edge_list[row + 2]))
+
+            self.edge_table.setItem(row/3, 0, source)
+            self.edge_table.setItem(row/3, 1, target)
+            self.edge_table.setItem(row/3, 2, cost)
+        
+        self.edge_table.blockSignals(False)
 
 if __name__ == "__main__":
     app = QApplication([])
