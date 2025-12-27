@@ -5,6 +5,7 @@ QGraphicsLineItem, QVBoxLayout, QSplitter, QLabel, QDialog, QTableWidget,
 QWidget, QTableWidgetItem, QHeaderView, QMenu)
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QPainter, QAction, QPen, QColor
+import math
 from node_item import NodeItem, NodeLabelItem
 from edge_item import EdgeItem
 from cost_item import CostItem
@@ -57,6 +58,43 @@ class GraphScene(QGraphicsScene):
         print("Imported Graph With Positioning")
 
     def import_graph_without_pos(self):
+        self.clear()
+        self.graph.import_graph()
+
+        node_list = self.graph.node_list
+        edge_list = self.graph.edge_list
+        node_count = len(node_list)
+
+        cx = 400
+        cy = 400
+        radius = 300
+        
+        for i, node in enumerate(node_list.items()):
+            angle = math.pi * 2 * i / node_count
+            x = round(cx + radius * math.cos(angle), 2)
+            y = round(cy + radius * math.sin(angle), 2)
+
+            node[1][0] = x
+            node[1][1] = y
+
+            item = NodeItem(x, y, node[0])
+            self.addItem(item)
+
+        for i in range(0, len(edge_list), 3):
+            curve_sign = 0
+            source = self.itemAt(node_list[edge_list[i]][0], node_list[edge_list[i]][1], self.views()[0].transform())
+            target = self.itemAt(node_list[edge_list[i + 1]][0], node_list[edge_list[i + 1]][1], self.views()[0].transform())
+            
+            source = source.parentItem()
+            target = target.parentItem()
+            
+            if self.graph.isDirected is True:
+                if source.has_other_arc(target):
+                    curve_sign = 1
+                    
+            edge = EdgeItem(source, target, edge_list[i + 2], curve_sign)
+            self.addItem(edge)
+
         print("Imported Graph Without Positioning")
 
     def set_directed_graph(self):
@@ -86,9 +124,6 @@ class GraphScene(QGraphicsScene):
     def set_mode(self, mode):
         if self.edge_preview:
             self.stop_edge_preview()
-        
-        if self.current_mode == mode:
-            return
         
         if self.current_mode != self.FORCE_MODE and mode != self.FORCE_MODE:
             self.current_mode = mode
