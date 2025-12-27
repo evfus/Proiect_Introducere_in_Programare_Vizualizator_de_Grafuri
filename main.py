@@ -336,8 +336,6 @@ class MainWindow(QMainWindow):
         
         self.node_table.blockSignals(False)
 
-
-
 if __name__ == "__main__":
     app = QApplication([])
     window = MainWindow()
