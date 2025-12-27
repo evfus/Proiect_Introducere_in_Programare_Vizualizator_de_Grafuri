@@ -2,9 +2,10 @@ import sys
 from PySide6.QtWidgets import (QGraphicsView, QApplication, QMainWindow, 
 QGraphicsItem, QGraphicsScene, QGraphicsEllipseItem, QGraphicsTextItem, 
 QGraphicsLineItem, QVBoxLayout, QSplitter, QLabel, QDialog, QTableWidget, 
-QWidget, QTableWidgetItem, QHeaderView)
+QWidget, QTableWidgetItem, QHeaderView, QMenu)
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QPainter, QAction, QPen, QColor
+import math
 from node_item import NodeItem, NodeLabelItem
 from edge_item import EdgeItem
 from cost_item import CostItem
@@ -21,13 +22,80 @@ class GraphScene(QGraphicsScene):
         super().__init__()
         self.setSceneRect(0, 0, 800, 800)
         self.graph = Graph() 
-        self.graph.import_graph()
         self.current_mode = self.DRAW_MODE
         self.node_counter = 0
         self.nodeID = 0
         self.last_clicked_item = None
         self.deleted_nodes = []
         self.edge_preview = None
+
+    def import_graph_with_pos(self):
+        self.clear()
+        self.graph.import_graph()
+
+        node_list = self.graph.node_list
+        edge_list = self.graph.edge_list
+
+        for node in node_list.items():
+            item = NodeItem(node[1][0], node[1][1], node[0])
+            self.addItem(item)
+
+        for i in range(0, len(edge_list), 3):
+            curve_sign = 0
+            source = self.itemAt(node_list[edge_list[i]][0], node_list[edge_list[i]][1], self.views()[0].transform())
+            target = self.itemAt(node_list[edge_list[i + 1]][0], node_list[edge_list[i + 1]][1], self.views()[0].transform())
+            
+            source = source.parentItem()
+            target = target.parentItem()
+            
+            if self.graph.isDirected is True:
+                if source.has_other_arc(target):
+                    curve_sign = 1
+                    
+            edge = EdgeItem(source, target, edge_list[i + 2], curve_sign)
+            self.addItem(edge)
+
+        print("Imported Graph With Positioning")
+
+    def import_graph_without_pos(self):
+        self.clear()
+        self.graph.import_graph()
+
+        node_list = self.graph.node_list
+        edge_list = self.graph.edge_list
+        node_count = len(node_list)
+
+        cx = 400
+        cy = 400
+        radius = 300
+        
+        for i, node in enumerate(node_list.items()):
+            angle = math.pi * 2 * i / node_count
+            x = round(cx + radius * math.cos(angle), 2)
+            y = round(cy + radius * math.sin(angle), 2)
+
+            node[1][0] = x
+            node[1][1] = y
+
+            item = NodeItem(x, y, node[0])
+            self.addItem(item)
+
+        for i in range(0, len(edge_list), 3):
+            curve_sign = 0
+            source = self.itemAt(node_list[edge_list[i]][0], node_list[edge_list[i]][1], self.views()[0].transform())
+            target = self.itemAt(node_list[edge_list[i + 1]][0], node_list[edge_list[i + 1]][1], self.views()[0].transform())
+            
+            source = source.parentItem()
+            target = target.parentItem()
+            
+            if self.graph.isDirected is True:
+                if source.has_other_arc(target):
+                    curve_sign = 1
+                    
+            edge = EdgeItem(source, target, edge_list[i + 2], curve_sign)
+            self.addItem(edge)
+
+        print("Imported Graph Without Positioning")
 
     def set_directed_graph(self):
         if self.graph.isDirected == True:
@@ -56,9 +124,6 @@ class GraphScene(QGraphicsScene):
     def set_mode(self, mode):
         if self.edge_preview:
             self.stop_edge_preview()
-        
-        if self.current_mode == mode:
-            return
         
         if self.current_mode != self.FORCE_MODE and mode != self.FORCE_MODE:
             self.current_mode = mode
@@ -127,8 +192,6 @@ class GraphScene(QGraphicsScene):
     def mousePressEvent(self, event):
         x = event.scenePos().x()
         y = event.scenePos().y()
-
-        print(x, y)
 
         clicked_item = self.itemAt(event.scenePos(), self.views()[0].transform())
         
@@ -285,13 +348,24 @@ class MainWindow(QMainWindow):
         self.edit_action = QAction("Edit", self)
         self.directed_graph = QAction("Directed", self)
         self.undirected_graph = QAction("Undirected", self)
+        self.import_graph = QAction("Import Graph", self)
 
+        import_menu = QMenu(self)
+        import_with_pos = QAction("With Positioning", self)
+        import_without_pos = QAction("Without Positioning", self)
+
+        import_menu.addAction(import_with_pos)
+        import_menu.addAction(import_without_pos)
+
+        self.import_graph.setMenu(import_menu)
+        
         self.toolbar.addAction(self.force_action)
         self.toolbar.addAction(self.draw_action)
         self.toolbar.addAction(self.delete_action)
         self.toolbar.addAction(self.edit_action)
         self.toolbar.addAction(self.directed_graph)
         self.toolbar.addAction(self.undirected_graph)
+        self.toolbar.addAction(self.import_graph)
 
         self.force_action.triggered.connect(lambda: self.scene.set_mode(0))
         self.draw_action.triggered.connect(lambda: self.scene.set_mode(1))
@@ -299,7 +373,19 @@ class MainWindow(QMainWindow):
         self.edit_action.triggered.connect(lambda: self.scene.set_mode(3))
         self.directed_graph.triggered.connect(lambda: self.scene.set_directed_graph())
         self.undirected_graph.triggered.connect(lambda: self.scene.set_undirected_graph())
-
+        
+        self.import_graph.triggered.connect(lambda: self.scene.import_graph_with_pos())
+        self.import_graph.triggered.connect(lambda: self.update_edge_table())
+        self.import_graph.triggered.connect(lambda: self.update_node_table())
+        
+        import_with_pos.triggered.connect(lambda: self.scene.import_graph_with_pos())
+        import_with_pos.triggered.connect(lambda: self.update_edge_table())
+        import_with_pos.triggered.connect(lambda: self.update_node_table())
+        
+        import_without_pos.triggered.connect(lambda: self.scene.import_graph_without_pos())
+        import_without_pos.triggered.connect(lambda: self.update_edge_table())
+        import_without_pos.triggered.connect(lambda: self.update_node_table())
+        
         self.update_node_table()
         self.update_edge_table()
 
@@ -344,7 +430,6 @@ class MainWindow(QMainWindow):
         self.edge_table.setRowCount(len(edge_list)/3)
 
         for row in range(0, len(edge_list), 3):
-            print(edge_list[row], edge_list[row + 1], edge_list[row + 2])
             source = QTableWidgetItem(str(edge_list[row]))
             target = QTableWidgetItem(str(edge_list[row + 1]))
             cost = QTableWidgetItem('' if edge_list[row + 2] == 'None' else str(edge_list[row + 2]))

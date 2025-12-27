@@ -43,7 +43,9 @@ class Graph():
 
     def import_graph(self):
         file = open('graph', 'r')
-        self.isDirected = bool(int(file.readline()))
+        first_line = file.readline().strip()
+
+        self.isDirected = True if first_line == "True" else False
 
         self.node_list.clear()
         self.edge_list.clear()

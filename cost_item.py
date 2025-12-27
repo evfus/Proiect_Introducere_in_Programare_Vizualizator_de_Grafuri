@@ -26,12 +26,17 @@ class CostLabelItem(QGraphicsTextItem):
         if new_cost == "":
             self.parentItem().setVisible(False)
             scene.graph.update_cost(source_node, target_node, None)
+            self.parentItem().value = None
             return
         
         if not new_cost.isdigit():
-            self.setPlainText(str(self.parentItem().value))
+            if self.parentItem().value is None:
+                self.setPlainText("")
+                self.parentItem().setVisible(False)
+            else:
+                self.setPlainText(str(self.parentItem().value))
             return
-        
+
         new_cost = int(new_cost)
         
         scene.graph.update_cost(source_node, target_node, new_cost)
@@ -60,7 +65,7 @@ class CostItem(QGraphicsRectItem):
         self.label = CostLabelItem(str(self.value))
         self.label.setParentItem(self)
         
-        if self.value is None:
+        if self.value is None or self.value == "None":
             self.setVisible(False)
         
         self.update_cost_position()
