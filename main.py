@@ -3,7 +3,7 @@ from PySide6.QtWidgets import (QGraphicsView, QApplication, QMainWindow,
 QGraphicsItem, QGraphicsScene, QGraphicsEllipseItem, QGraphicsTextItem, 
 QGraphicsLineItem, QVBoxLayout, QSplitter, QLabel, QDialog, QTableWidget, 
 QWidget, QTableWidgetItem, QHeaderView, QMenu)
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QPainter, QAction, QPen, QColor
 import math
 from node_item import NodeItem, NodeLabelItem
@@ -17,6 +17,8 @@ class GraphScene(QGraphicsScene):
     DRAW_MODE = 1
     DELETE_MODE = 2
     EDIT_MODE = 3
+    update_nodes = Signal()
+    update_edges = Signal()
     
     def __init__(self):
         super().__init__()
@@ -117,9 +119,11 @@ class GraphScene(QGraphicsScene):
                     other_arc = item.source.has_other_arc(item.target)
                     other_arc.curveSign = 0
                     self.graph.remove_edge(item.source.node_id, item.target.node_id)
+                    self.update_edges.emit()
                     self.delete_edge(item)
                 item.curveSign = 0
                 item.update_path()
+                item.cost.update_cost_position()
                 
     def set_mode(self, mode):
         if self.edge_preview:
@@ -218,6 +222,7 @@ class GraphScene(QGraphicsScene):
                         node = NodeItem(x, y, self.nodeID)
                         self.addItem(node)
                         self.graph.add_node(self.nodeID, x, y)
+                        self.update_nodes.emit()
                         self.last_clicked_item = None
 
                     else:
@@ -243,6 +248,7 @@ class GraphScene(QGraphicsScene):
                         edge = EdgeItem(self.last_clicked_item, clicked_item, None, curve_sign)
                         self.addItem(edge)
                         self.graph.add_edge(self.last_clicked_item.node_id, clicked_item.node_id, None)
+                        self.update_edges.emit()
 
                         self.stop_edge_preview()
                         self.last_clicked_item = clicked_item
@@ -266,6 +272,8 @@ class GraphScene(QGraphicsScene):
 
                     self.deleted_nodes.append(clicked_item.node_id)
                     self.graph.remove_node(clicked_item.node_id)
+                    self.update_edges.emit()
+                    self.update_nodes.emit()
                     self.removeItem(clicked_item)
 
                 if isinstance(clicked_item, EdgeItem):
@@ -277,13 +285,12 @@ class GraphScene(QGraphicsScene):
                             arc.cost.update_cost_position()
                     
                     self.graph.remove_edge(clicked_item.source.node_id, clicked_item.target.node_id)
+                    self.update_edges.emit()
                     self.delete_edge(clicked_item)
-                
 
                 super().mousePressEvent(event) 
 
             case self.EDIT_MODE:
-
                 if clicked_item is None and self.last_clicked_item:
                     self.last_clicked_item.clearFocus()
                     self.last_clicked_item.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsFocusable, False)
@@ -385,9 +392,9 @@ class MainWindow(QMainWindow):
         import_without_pos.triggered.connect(lambda: self.scene.import_graph_without_pos())
         import_without_pos.triggered.connect(lambda: self.update_edge_table())
         import_without_pos.triggered.connect(lambda: self.update_node_table())
-        
-        self.update_node_table()
-        self.update_edge_table()
+
+        self.scene.update_edges.connect(self.update_edge_table)
+        self.scene.update_nodes.connect(self.update_node_table)
 
     def setup_node_table(self):
         self.node_table.setColumnCount(3)

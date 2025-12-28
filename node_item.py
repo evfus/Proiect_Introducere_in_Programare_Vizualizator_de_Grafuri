@@ -32,6 +32,7 @@ class NodeLabelItem(QGraphicsTextItem):
         else:
             scene.deleted_nodes.append(current_id)
             scene.graph.change_node(current_id, new_id)
+            scene.update_nodes.emit()
 
             if new_id in scene.deleted_nodes:
                 scene.deleted_nodes.remove(new_id)
@@ -87,6 +88,7 @@ class NodeItem(QGraphicsEllipseItem):
         scene = self.scene()
         if scene.current_mode == 0 and self.hasMoved is True:
                 scene.graph.update_node_position(self.node_id, self.scenePos().x(), self.scenePos().y())
+                scene.update_nodes.emit()
                 self.hasMoved = False
 
         super().mouseReleaseEvent(event)
