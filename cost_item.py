@@ -26,6 +26,7 @@ class CostLabelItem(QGraphicsTextItem):
         if new_cost == "":
             self.parentItem().setVisible(False)
             scene.graph.update_cost(source_node, target_node, None)
+            scene.update_edges.emit()
             self.parentItem().value = None
             return
         
@@ -40,6 +41,7 @@ class CostLabelItem(QGraphicsTextItem):
         new_cost = int(new_cost)
         
         scene.graph.update_cost(source_node, target_node, new_cost)
+        scene.update_edges.emit()
         self.parentItem().value = new_cost
 
     def focusOutEvent(self, event):
