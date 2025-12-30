@@ -5,7 +5,7 @@ class Graph():
         self.isDirected = False
         
     def add_node(self, nod, x, y):
-        self.node_list[nod]=[x, y]
+        self.node_list[nod]=[int(x), int(y)]
     
     def add_edge(self, source, target, cost):
         self.edge_list.append(source)
@@ -39,7 +39,7 @@ class Graph():
                 self.edge_list[i + 2] = new_cost
 
     def update_node_position(self, node, x, y):
-        self.node_list[node] = [x, y]
+        self.node_list[node] = [int(x), int(y)]
 
     def import_graph(self):
         file = open('graph', 'r')
@@ -52,7 +52,7 @@ class Graph():
 
         nodes = file.readline().split()
         for i in range(0, len(nodes), 3):
-            self.node_list[int(nodes[i])] = [float(nodes[i + 1]), float(nodes[i + 2])]
+            self.node_list[int(nodes[i])] = [int(nodes[i + 1]), int(nodes[i + 2])]
 
         edges = file.readline().split()
         for i in range(0, len(edges), 3):

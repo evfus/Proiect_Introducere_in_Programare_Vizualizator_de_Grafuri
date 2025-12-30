@@ -69,7 +69,7 @@ class NodeItem(QGraphicsEllipseItem):
     
     def itemChange(self, change, value):
         scene = self.scene()
-        if scene is not None and scene.current_mode == 0:
+        if scene is not None:
             if change == QGraphicsItem.ItemPositionChange:
                 for edge in self.edge_list:
                     edge.update_path()

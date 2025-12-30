@@ -57,8 +57,6 @@ class GraphScene(QGraphicsScene):
             edge = EdgeItem(source, target, edge_list[i + 2], curve_sign)
             self.addItem(edge)
 
-        print("Imported Graph With Positioning")
-
     def import_graph_without_pos(self):
         self.clear()
         self.graph.import_graph()
@@ -73,8 +71,8 @@ class GraphScene(QGraphicsScene):
         
         for i, node in enumerate(node_list.items()):
             angle = math.pi * 2 * i / node_count
-            x = round(cx + radius * math.cos(angle), 2)
-            y = round(cy + radius * math.sin(angle), 2)
+            x = int(cx + radius * math.cos(angle))
+            y = int(cy + radius * math.sin(angle))
 
             node[1][0] = x
             node[1][1] = y
@@ -96,8 +94,6 @@ class GraphScene(QGraphicsScene):
                     
             edge = EdgeItem(source, target, edge_list[i + 2], curve_sign)
             self.addItem(edge)
-
-        print("Imported Graph Without Positioning")
 
     def set_directed_graph(self):
         if self.graph.isDirected == True:
@@ -396,6 +392,9 @@ class MainWindow(QMainWindow):
         self.scene.update_edges.connect(self.update_edge_table)
         self.scene.update_nodes.connect(self.update_node_table)
 
+        self.node_table.itemChanged.connect(self.node_table_change)
+        self.edge_table.itemChanged.connect(self.edge_table_change)
+
     def setup_node_table(self):
         self.node_table.setColumnCount(3)
         header = self.node_table.horizontalHeader()
@@ -423,7 +422,14 @@ class MainWindow(QMainWindow):
             id = QTableWidgetItem(str(node))
             x = QTableWidgetItem(str(position[0]))
             y = QTableWidgetItem(str(position[1]))
-            
+
+            item = self.scene.itemAt(position[0], position[1], self.scene.views()[0].transform())
+            item = item.parentItem()
+
+            id.setData(Qt.UserRole, item)
+            x.setData(Qt.UserRole, item)
+            y.setData(Qt.UserRole, item)
+
             self.node_table.setItem(row, 0, id)
             self.node_table.setItem(row, 1, x)
             self.node_table.setItem(row, 2, y)
@@ -441,12 +447,80 @@ class MainWindow(QMainWindow):
             target = QTableWidgetItem(str(edge_list[row + 1]))
             cost = QTableWidgetItem('' if edge_list[row + 2] == 'None' else str(edge_list[row + 2]))
 
+            source_x, source_y = list(self.scene.graph.node_list[edge_list[row]])
+            source_node = self.scene.itemAt(source_x, source_y, self.scene.views()[0].transform())
+            source_node = source_node.parentItem()
+
+            for edge in source_node.edge_list:
+                if edge.source is source_node and edge.target.node_id == edge_list[row + 1]:
+                    item = edge
+                    break
+
+            source.setData(Qt.UserRole, item)
+            target.setData(Qt.UserRole, item)
+            cost.setData(Qt.UserRole, item)
+
             self.edge_table.setItem(row/3, 0, source)
             self.edge_table.setItem(row/3, 1, target)
             self.edge_table.setItem(row/3, 2, cost)
         
         self.edge_table.blockSignals(False)
 
+    def node_table_change(self, item: QTableWidgetItem):
+        node = item.data(Qt.UserRole)
+        match item.column():
+            case 0:
+                new_id = item.text()
+                if new_id.isdigit():
+                    node.label.setPlainText(str(new_id))
+                    node.label.isValid()
+                    self.update_edge_table()
+
+                    if node.node_id != int(new_id):
+                        self.node_table.blockSignals(True)
+                        item.setText(str(node.node_id))
+                        self.node_table.blockSignals(False)
+                else:
+                    self.node_table.blockSignals(True)
+                    item.setText(str(node.node_id))
+                    self.node_table.blockSignals(False)
+            
+            case 1:
+                new_x = item.text()
+                try:
+                    float(new_x)
+                except ValueError:
+                    return
+                node.setPos(float(new_x), node.scenePos().y())
+                for edge in node.edge_list:
+                    edge.update_path()
+                    edge.cost.update_cost_position()
+                self.scene.graph.update_node_position(node.node_id, new_x, int(node.scenePos().y()))
+            
+            case 2:
+                new_y = item.text()
+                try:
+                    float(new_y)
+                except ValueError:
+                    return
+                node.setPos(node.scenePos().x(), float(new_y))
+                for edge in node.edge_list:
+                    edge.update_path()
+                    edge.cost.update_cost_position()
+                self.scene.graph.update_node_position(node.node_id, int(node.scenePos().x()), new_y)
+
+    def edge_table_change(self, item: QTableWidgetItem):
+        edge = item.data(Qt.UserRole)
+        match item.column():
+            case 0:
+                pass
+            
+            case 1:
+                pass
+
+            case 2:
+                pass
+            
 if __name__ == "__main__":
     app = QApplication([])
     window = MainWindow()
