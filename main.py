@@ -513,11 +513,46 @@ class MainWindow(QMainWindow):
         edge = item.data(Qt.UserRole)
         match item.column():
             case 0:
-                pass
-            
+                if item.text().isdigit():
+                    x = self.scene.graph.node_list[int(item.text())][0]
+                    y = self.scene.graph.node_list[int(item.text())][1]
+                    new_source = self.scene.itemAt(x, y, self.scene.views()[0].transform())
+                    new_source = new_source.parentItem()
+
+                    if edge.target.node_id != new_source.node_id and edge.source != new_source and not new_source.has_edge_to(edge.target):
+                        edge_list = self.scene.graph.edge_list
+                        for i in range(0, len(edge_list), 3):
+                            if edge_list[i] == edge.source.node_id and edge_list[i+1] == edge.target.node_id:
+                                edge_list[i] = new_source.node_id
+                                break
+                            
+                        edge.source.edge_list.remove(edge)
+                        edge.source = new_source
+                        edge.cost.start = new_source
+                        new_source.edge_list.append(edge)
+
+                        if self.scene.graph.isDirected:
+                            second_arc = edge.source.has_other_arc(edge.target)
+                            if second_arc is not None:
+                                edge.curveSign = 1
+                                second_arc.curveSign = 1
+                                second_arc.update_path()
+                                second_arc.cost.update_cost_position()
+
+                        edge.update_path()
+                        edge.cost.update_cost_position()
+
+                    else:
+                        self.edge_table.blockSignals(True)
+                        item.setText(str(edge.source.node_id))
+                        self.edge_table.blockSignals(False)
+
+                else: 
+                    self.edge_table.blockSignals(True)
+                    item.setText(str(edge.source.node_id))
+                    self.edge_table.blockSignals(False)
             case 1:
                 pass
-
             case 2:
                 pass
             
