@@ -450,7 +450,7 @@ class MainWindow(QMainWindow):
             source_x, source_y = list(self.scene.graph.node_list[edge_list[row]])
             source_node = self.scene.itemAt(source_x, source_y, self.scene.views()[0].transform())
             source_node = source_node.parentItem()
-
+            print(source_node.node_id, source_x, source_y)
             for edge in source_node.edge_list:
                 if edge.source is source_node and edge.target.node_id == edge_list[row + 1]:
                     item = edge
@@ -514,47 +514,135 @@ class MainWindow(QMainWindow):
         match item.column():
             case 0:
                 if item.text().isdigit():
-                    x = self.scene.graph.node_list[int(item.text())][0]
-                    y = self.scene.graph.node_list[int(item.text())][1]
-                    new_source = self.scene.itemAt(x, y, self.scene.views()[0].transform())
-                    new_source = new_source.parentItem()
+                    if int(item.text()) not in list(self.scene.graph.node_list.keys()):
+                        nodeID = int(item.text())
+                        if nodeID in self.scene.deleted_nodes:
+                            self.scene.deleted_nodes.remove(nodeID)
 
-                    if edge.target.node_id != new_source.node_id and edge.source != new_source and not new_source.has_edge_to(edge.target):
-                        edge_list = self.scene.graph.edge_list
-                        for i in range(0, len(edge_list), 3):
-                            if edge_list[i] == edge.source.node_id and edge_list[i+1] == edge.target.node_id:
-                                edge_list[i] = new_source.node_id
-                                break
-                            
+                        node = NodeItem(400, 400, nodeID)
+                        self.scene.addItem(node)
+                        self.scene.graph.add_node(nodeID, 400, 400)
+                        self.scene.graph.edge_list[item.row() * 3] = nodeID
+                        self.update_node_table()
+                        node.edge_list.append(edge)
                         edge.source.edge_list.remove(edge)
-                        edge.source = new_source
-                        edge.cost.start = new_source
-                        new_source.edge_list.append(edge)
-
-                        if self.scene.graph.isDirected:
-                            second_arc = edge.source.has_other_arc(edge.target)
-                            if second_arc is not None:
-                                edge.curveSign = 1
-                                second_arc.curveSign = 1
+                        edge.source = node
+                        edge.cost.start = node
+                        edge.update_path()
+                        edge.cost.update_cost_position()
+                    
+                    else:
+                        x = self.scene.graph.node_list[int(item.text())][0]
+                        y = self.scene.graph.node_list[int(item.text())][1]
+                        new_source = self.scene.itemAt(x, y, self.scene.views()[0].transform())
+                        new_source = new_source.parentItem()    
+                        
+                        if edge.target != new_source and edge.source != new_source and not new_source.has_edge_to(edge.target):
+                            self.scene.graph.edge_list[item.row() * 3] = new_source.node_id
+                            
+                            if edge.curveSign == 1:
+                                second_arc = edge.source.has_other_arc(edge.target)
+                                edge.curveSign = 0
+                                second_arc.curveSign = 0
                                 second_arc.update_path()
                                 second_arc.cost.update_cost_position()
 
-                        edge.update_path()
-                        edge.cost.update_cost_position()
+                            edge.source.edge_list.remove(edge)
+                            edge.source = new_source
+                            edge.cost.start = new_source
+                            new_source.edge_list.append(edge)
 
-                    else:
-                        self.edge_table.blockSignals(True)
-                        item.setText(str(edge.source.node_id))
-                        self.edge_table.blockSignals(False)
+                            if self.scene.graph.isDirected:
+                                second_arc = edge.source.has_other_arc(edge.target)
+                                if second_arc is not None:
+                                    edge.curveSign = 1
+                                    second_arc.curveSign = 1
+                                    second_arc.update_path()
+                                    second_arc.cost.update_cost_position()
+
+                            edge.update_path()
+                            edge.cost.update_cost_position()
+
+                        else:
+                            self.edge_table.blockSignals(True)
+                            item.setText(str(edge.source.node_id))
+                            self.edge_table.blockSignals(False)
 
                 else: 
                     self.edge_table.blockSignals(True)
                     item.setText(str(edge.source.node_id))
                     self.edge_table.blockSignals(False)
+
             case 1:
-                pass
+                if item.text().isdigit():
+                    if int(item.text()) not in list(self.scene.graph.node_list.keys()):
+                        nodeID = int(item.text())
+                        if nodeID in self.scene.deleted_nodes:
+                            self.scene.deleted_nodes.remove(nodeID)
+                        node = NodeItem(400, 400, nodeID)
+                        self.scene.addItem(node)
+                        self.scene.graph.add_node(nodeID, 400, 400)
+                        self.scene.graph.edge_list[item.row() * 3 + 1] = nodeID
+                        self.update_node_table()
+                        node.edge_list.append(edge)
+                        edge.target.edge_list.remove(edge)
+                        edge.target = node
+                        edge.cost.end = node
+                        edge.update_path()
+                        edge.cost.update_cost_position()
+                    
+                    else:
+                        x = self.scene.graph.node_list[int(item.text())][0]
+                        y = self.scene.graph.node_list[int(item.text())][1]
+                        new_target = self.scene.itemAt(x, y, self.scene.views()[0].transform())
+                        new_target = new_target.parentItem()    
+                        
+                        if edge.source != new_target and edge.target != new_target:
+                            self.scene.graph.edge_list[item.row() * 3 + 1] = new_target.node_id
+
+                            if edge.curveSign == 1:
+                                second_arc = edge.source.has_other_arc(edge.target)
+                                edge.curveSign = 0
+                                second_arc.curveSign = 0
+                                second_arc.update_path()
+                                second_arc.cost.update_cost_position()
+
+                            edge.target.edge_list.remove(edge)
+                            edge.target = new_target
+                            edge.cost.end = new_target
+                            new_target.edge_list.append(edge)
+
+                            if self.scene.graph.isDirected:
+                                print("intra", edge.target.node_id, edge.source.node_id)
+                                second_arc = edge.source.has_other_arc(edge.target)
+                                if second_arc is not None:
+                                    edge.curveSign = 1
+                                    second_arc.curveSign = 1
+                                    second_arc.update_path()
+                                    second_arc.cost.update_cost_position()
+
+                            edge.update_path()
+                            edge.cost.update_cost_position()
+
+                        else:
+                            self.edge_table.blockSignals(True)
+                            item.setText(str(edge.target.node_id))
+                            self.edge_table.blockSignals(False)
+
+                else: 
+                    self.edge_table.blockSignals(True)
+                    item.setText(str(edge.target.node_id))
+                    self.edge_table.blockSignals(False)
             case 2:
-                pass
+                if item.text().isdigit() or item.text() == "" or item.text() == "None":
+                    edge.cost.label.setPlainText(item.text())
+                    edge.cost.setVisible(True)
+                    edge.cost.label.isValid()
+            
+                else:
+                    self.edge_table.blockSignals(True)
+                    item.setText(str(edge.costValue))
+                    self.edge_table.blockSignals(False)
             
 if __name__ == "__main__":
     app = QApplication([])
