@@ -30,14 +30,15 @@ class NodeLabelItem(QGraphicsTextItem):
             return
         
         else:
+            self.parentItem().node_id = new_id
             scene.deleted_nodes.append(current_id)
             scene.graph.change_node(current_id, new_id)
-            scene.update_nodes.emit()
 
             if new_id in scene.deleted_nodes:
                 scene.deleted_nodes.remove(new_id)
             
-            self.parentItem().node_id = new_id
+            scene.update_nodes.emit()
+            scene.update_edges.emit()
         
     def focusOutEvent(self, event):
         self.isValid()
@@ -69,7 +70,7 @@ class NodeItem(QGraphicsEllipseItem):
     
     def itemChange(self, change, value):
         scene = self.scene()
-        if scene is not None and scene.current_mode == 0:
+        if scene is not None:
             if change == QGraphicsItem.ItemPositionChange:
                 for edge in self.edge_list:
                     edge.update_path()

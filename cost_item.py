@@ -23,26 +23,27 @@ class CostLabelItem(QGraphicsTextItem):
         source_node = self.parentItem().start.node_id
         target_node = self.parentItem().end.node_id
 
-        if new_cost == "":
+        if new_cost == "" or new_cost == "None":
             self.parentItem().setVisible(False)
             scene.graph.update_cost(source_node, target_node, None)
             scene.update_edges.emit()
-            self.parentItem().value = None
+            self.parentItem().costValue = None
             return
         
         if not new_cost.isdigit():
-            if self.parentItem().value is None:
+            if self.parentItem().costValue is None:
                 self.setPlainText("")
                 self.parentItem().setVisible(False)
             else:
-                self.setPlainText(str(self.parentItem().value))
+                self.setPlainText(str(self.parentItem().costValue))
             return
 
         new_cost = int(new_cost)
         
         scene.graph.update_cost(source_node, target_node, new_cost)
         scene.update_edges.emit()
-        self.parentItem().value = new_cost
+        self.parentItem().costValue = new_cost
+        self.value = new_cost
 
     def focusOutEvent(self, event):
         self.isValid()
