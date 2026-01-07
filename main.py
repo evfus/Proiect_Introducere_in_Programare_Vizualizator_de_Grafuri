@@ -96,6 +96,9 @@ class GraphScene(QGraphicsScene):
             edge = EdgeItem(source, target, edge_list[i + 2], curve_sign)
             self.addItem(edge)
 
+    def export(self):
+        self.graph.export_graph()
+
     def set_directed_graph(self):
         if self.graph.isDirected == True:
             return
@@ -385,6 +388,7 @@ class MainWindow(QMainWindow):
         self.directed_graph = QAction("Directed", self)
         self.undirected_graph = QAction("Undirected", self)
         self.import_graph = QAction("Import Graph", self)
+        self.export_graph = QAction("Export Graph", self)
         self.custom_code = QAction("Custom code", self)
 
         import_menu = QMenu(self)
@@ -403,6 +407,7 @@ class MainWindow(QMainWindow):
         self.toolbar.addAction(self.directed_graph)
         self.toolbar.addAction(self.undirected_graph)
         self.toolbar.addAction(self.import_graph)
+        self.toolbar.addAction(self.export_graph)
         self.toolbar.addAction(self.custom_code)
 
         self.force_action.triggered.connect(lambda: self.scene.set_mode(0))
@@ -415,6 +420,8 @@ class MainWindow(QMainWindow):
         self.import_graph.triggered.connect(lambda: self.scene.import_graph_with_pos())
         self.import_graph.triggered.connect(lambda: self.update_edge_table())
         self.import_graph.triggered.connect(lambda: self.update_node_table())
+
+        self.export_graph.triggered.connect(lambda: self.scene.graph.export_graph())
         
         import_with_pos.triggered.connect(lambda: self.scene.import_graph_with_pos())
         import_with_pos.triggered.connect(lambda: self.update_edge_table())
