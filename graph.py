@@ -42,7 +42,7 @@ class Graph():
         self.node_list[node] = [int(x), int(y)]
 
     def import_graph(self):
-        file = open('graph', 'r')
+        file = open('graph_data.txt', 'r')
         first_line = file.readline().strip()
 
         self.isDirected = True if first_line == "True" else False
@@ -63,3 +63,23 @@ class Graph():
                 self.edge_list.append(edges[i + 2])
             else:
                 self.edge_list.append(int(edges[i + 2]))
+
+    def export_graph(self):
+        with open('graph_data.txt', 'w') as file:
+            # 1. Tipul grafului
+            file.write(f"{self.isDirected}\n")
+        
+        # 2. Nodurile
+            node_data = []
+            for node_id, pos in self.node_list.items():
+                node_data.extend([str(node_id), str(int(pos[0])), str(int(pos[1]))])
+            file.write(" ".join(node_data) + "\n")
+        
+        # 3. Muchiile
+            edge_data = []
+            for i in range(0, len(self.edge_list), 3):
+                u = self.edge_list[i]
+                v = self.edge_list[i+1]
+                cost = self.edge_list[i+2]
+                edge_data.extend([str(u), str(v), str(cost)])
+            file.write(" ".join(edge_data) + "\n")
