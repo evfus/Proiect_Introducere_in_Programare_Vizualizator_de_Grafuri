@@ -2,3 +2,4 @@ __pycache__
 .venv
 graph
 tests.py
+.vscode
