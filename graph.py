@@ -66,16 +66,13 @@ class Graph():
 
     def export_graph(self):
         with open('graph_data.txt', 'w') as file:
-            # 1. Tipul grafului
             file.write(f"{self.isDirected}\n")
         
-        # 2. Nodurile
             node_data = []
             for node_id, pos in self.node_list.items():
                 node_data.extend([str(node_id), str(int(pos[0])), str(int(pos[1]))])
             file.write(" ".join(node_data) + "\n")
         
-        # 3. Muchiile
             edge_data = []
             for i in range(0, len(self.edge_list), 3):
                 u = self.edge_list[i]
