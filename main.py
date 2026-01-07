@@ -1,8 +1,9 @@
 import sys
 from PySide6.QtWidgets import (QGraphicsView, QApplication, QMainWindow, 
 QGraphicsItem, QGraphicsScene, QGraphicsEllipseItem, QGraphicsTextItem, 
-QGraphicsLineItem, QVBoxLayout, QSplitter, QLabel, QDialog, QTableWidget, 
-QWidget, QTableWidgetItem, QHeaderView, QMenu)
+QGraphicsLineItem, QVBoxLayout, QSplitter, QDialog, QTableWidget, 
+QWidget, QTableWidgetItem, QHeaderView, QMenu, QTextEdit, QPushButton, 
+QMessageBox, QHBoxLayout)
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QPainter, QAction, QPen, QColor
 import math
@@ -317,6 +318,38 @@ class GraphView(QGraphicsView):
 
         self.setRenderHints(QPainter.Antialiasing | QPainter.SmoothPixmapTransform)
 
+class CodeEditWindow(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("Custom Code Editor")
+        self.resize(400, 300)
+
+        layout = QVBoxLayout(self)
+        buttons_layout = QHBoxLayout()
+        layout.addLayout(buttons_layout)
+
+        self.code_editor = QTextEdit()
+        self.code_editor.setPlaceholderText("Write your python code here:")
+        layout.addWidget(self.code_editor)
+
+        self.run_button = QPushButton("Run")
+        self.run_button.clicked.connect(self.run_code)
+        buttons_layout.addWidget(self.run_button)
+
+        self.clear_button = QPushButton("Clear")
+        self.clear_button.clicked.connect(self.code_editor.clear)
+        buttons_layout.addWidget(self.clear_button)
+
+        buttons_layout.addStretch()
+
+    def run_code(self):
+        code = self.code_editor.toPlainText()
+        
+        try:
+            exec(code)
+        except Exception as e:
+            QMessageBox.critical(self, "Error", str(e))
+
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -352,6 +385,7 @@ class MainWindow(QMainWindow):
         self.directed_graph = QAction("Directed", self)
         self.undirected_graph = QAction("Undirected", self)
         self.import_graph = QAction("Import Graph", self)
+        self.custom_code = QAction("Custom code", self)
 
         import_menu = QMenu(self)
         import_with_pos = QAction("With Positioning", self)
@@ -369,6 +403,7 @@ class MainWindow(QMainWindow):
         self.toolbar.addAction(self.directed_graph)
         self.toolbar.addAction(self.undirected_graph)
         self.toolbar.addAction(self.import_graph)
+        self.toolbar.addAction(self.custom_code)
 
         self.force_action.triggered.connect(lambda: self.scene.set_mode(0))
         self.draw_action.triggered.connect(lambda: self.scene.set_mode(1))
@@ -388,6 +423,8 @@ class MainWindow(QMainWindow):
         import_without_pos.triggered.connect(lambda: self.scene.import_graph_without_pos())
         import_without_pos.triggered.connect(lambda: self.update_edge_table())
         import_without_pos.triggered.connect(lambda: self.update_node_table())
+        
+        self.custom_code.triggered.connect(lambda: self.create_code_window())
 
         self.scene.update_edges.connect(self.update_edge_table)
         self.scene.update_nodes.connect(self.update_node_table)
@@ -644,6 +681,10 @@ class MainWindow(QMainWindow):
                     item.setText(str(edge.costValue))
                     self.edge_table.blockSignals(False)
             
+    def create_code_window(self):
+        self.code_window = CodeEditWindow()
+        self.code_window.show()
+
 if __name__ == "__main__":
     app = QApplication([])
     window = MainWindow()
