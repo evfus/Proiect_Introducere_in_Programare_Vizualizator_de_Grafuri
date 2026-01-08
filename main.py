@@ -5,7 +5,7 @@ QGraphicsLineItem, QVBoxLayout, QSplitter, QDialog, QTableWidget,
 QWidget, QTableWidgetItem, QHeaderView, QMenu, QTextEdit, QPushButton, 
 QMessageBox, QHBoxLayout)
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QPainter, QAction, QPen, QColor
+from PySide6.QtGui import QPainter, QAction, QPen, QColor, QImage
 import math
 from node_item import NodeItem, NodeLabelItem
 from edge_item import EdgeItem
@@ -58,6 +58,8 @@ class GraphScene(QGraphicsScene):
                     
             edge = EdgeItem(source, target, edge_list[i + 2], curve_sign)
             self.addItem(edge)
+        self.update_nodes.emit()
+        self.update_edges.emit()
 
     def import_graph_without_pos(self):
         self.clear()
@@ -97,8 +99,34 @@ class GraphScene(QGraphicsScene):
             edge = EdgeItem(source, target, edge_list[i + 2], curve_sign)
             self.addItem(edge)
 
+        self.update_nodes.emit()
+        self.update_edges.emit()
+
     def export(self):
         self.graph.export_graph()
+
+    def export_scene_png(self):
+        if self.edge_preview is not None:
+            self.stop_edge_preview()
+        
+        if self.clicked_item is not None:
+            if isinstance(self.clicked_item, NodeItem):
+                self.clicked_item.unfocused_color()
+            elif isinstance(self.clicked_item, NodeLabelItem):
+                self.clicked_item.parentItem().unfocused_color()
+        
+        area = self.sceneRect()
+        
+        image = QImage(area.size().toSize(), QImage.Format_ARGB32)
+        image.fill(Qt.GlobalColor.white)
+        
+        painter = QPainter(image)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        
+        self.render(painter, image.rect(), area)
+        painter.end()
+        
+        image.save("graph.png", "PNG")
 
     def set_directed_graph(self):
         if self.graph.isDirected == True:
@@ -412,11 +440,16 @@ class MainWindow(QMainWindow):
         import_menu = QMenu(self)
         import_with_pos = QAction("With Positioning", self)
         import_without_pos = QAction("Without Positioning", self)
-
+        
         import_menu.addAction(import_with_pos)
         import_menu.addAction(import_without_pos)
-
         self.import_graph.setMenu(import_menu)
+
+        export_menu = QMenu(self)
+        export_as_png = QAction("As PNG", self)
+
+        export_menu.addAction(export_as_png)
+        self.export_graph.setMenu(export_menu)
         
         self.toolbar.addAction(self.force_action)
         self.toolbar.addAction(self.draw_action)
@@ -437,18 +470,11 @@ class MainWindow(QMainWindow):
         self.undirected_graph.triggered.connect(self.scene.set_undirected_graph)
         
         self.import_graph.triggered.connect(self.scene.import_graph_with_pos)
-        self.import_graph.triggered.connect(self.update_edge_table)
-        self.import_graph.triggered.connect(self.update_node_table)
-
-        import_with_pos.triggered.connect(self.scene.import_graph_with_pos)
-        import_with_pos.triggered.connect(self.update_edge_table)
-        import_with_pos.triggered.connect(self.update_node_table)
-        
+        import_with_pos.triggered.connect(self.scene.import_graph_with_pos)        
         import_without_pos.triggered.connect(self.scene.import_graph_without_pos)
-        import_without_pos.triggered.connect(self.update_edge_table)
-        import_without_pos.triggered.connect(self.update_node_table)
         
         self.export_graph.triggered.connect(self.scene.graph.export_graph)
+        export_as_png.triggered.connect(self.scene.export_scene_png)
 
         self.custom_code.triggered.connect(self.create_code_window)
 
