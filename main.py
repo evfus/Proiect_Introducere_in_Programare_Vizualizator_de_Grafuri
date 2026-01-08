@@ -29,6 +29,7 @@ class GraphScene(QGraphicsScene):
         self.node_counter = 0
         self.nodeID = 0
         self.last_clicked_item = None
+        self.clicked_item = None
         self.deleted_nodes = []
         self.edge_preview = None
 
@@ -196,18 +197,34 @@ class GraphScene(QGraphicsScene):
     def mousePressEvent(self, event):
         x = event.scenePos().x()
         y = event.scenePos().y()
+        
+        if self.clicked_item is not None:
+            if isinstance(self.clicked_item, NodeItem):
+                self.clicked_item.unfocused_color()
+            elif isinstance(self.clicked_item, NodeLabelItem):
+                self.clicked_item.parentItem().unfocused_color()
 
-        clicked_item = self.itemAt(event.scenePos(), self.views()[0].transform())
+        self.clicked_item = self.itemAt(event.scenePos(), self.views()[0].transform())
+        
+        if isinstance(self.clicked_item, NodeItem):
+            self.last_clicked_node = self.clicked_item
+        elif isinstance(self.clicked_item, NodeLabelItem):
+            self.last_clicked_node = self.clicked_item.parentItem()
+
+        if isinstance(self.clicked_item, NodeItem):
+            self.clicked_item.focused_color()
+        elif isinstance(self.clicked_item, NodeLabelItem):
+            self.clicked_item.parentItem().focused_color()
         
         match self.current_mode:
             case self.FORCE_MODE:
                 super().mousePressEvent(event)
                 
             case self.DRAW_MODE:
-                if isinstance(clicked_item, NodeLabelItem):
-                    clicked_item = clicked_item.parentItem()
+                if isinstance(self.clicked_item, NodeLabelItem):
+                    self.clicked_item = self.clicked_item.parentItem()
 
-                if clicked_item is None:
+                if self.clicked_item is None:
                     if self.edge_preview is None:
                         if not self.deleted_nodes:
                             self.node_counter += 1
@@ -228,15 +245,15 @@ class GraphScene(QGraphicsScene):
                     else:
                         self.stop_edge_preview()
 
-                elif isinstance(clicked_item, NodeItem):
+                elif isinstance(self.clicked_item, NodeItem):
                     if self.last_clicked_item is None:
-                        self.last_clicked_item = clicked_item
+                        self.last_clicked_item = self.clicked_item
                         self.start_edge_preview()
         
-                    elif not clicked_item is self.last_clicked_item and not self.last_clicked_item.has_edge_to(clicked_item):
+                    elif not self.clicked_item is self.last_clicked_item and not self.last_clicked_item.has_edge_to(self.clicked_item):
                         curve_sign = 0
                         if self.graph.isDirected == True:
-                            item = self.last_clicked_item.has_other_arc(clicked_item)
+                            item = self.last_clicked_item.has_other_arc(self.clicked_item)
                             if item is not None:
                                 item.curveSign = 1
                                 item.update_path()
@@ -245,13 +262,13 @@ class GraphScene(QGraphicsScene):
                             else:
                                 curve_sign = 0
                         
-                        edge = EdgeItem(self.last_clicked_item, clicked_item, None, curve_sign)
+                        edge = EdgeItem(self.last_clicked_item, self.clicked_item, None, curve_sign)
                         self.addItem(edge)
-                        self.graph.add_edge(self.last_clicked_item.node_id, clicked_item.node_id, None)
+                        self.graph.add_edge(self.last_clicked_item.node_id, self.clicked_item.node_id, None)
                         self.update_edges.emit()
 
                         self.stop_edge_preview()
-                        self.last_clicked_item = clicked_item
+                        self.last_clicked_item = self.clicked_item
                         self.start_edge_preview()
 
                     else:
@@ -260,53 +277,54 @@ class GraphScene(QGraphicsScene):
                 super().mousePressEvent(event)
                 
             case self.DELETE_MODE:
-                if isinstance(clicked_item, QGraphicsTextItem):
-                    clicked_item = clicked_item.parentItem()
-                if isinstance(clicked_item, CostItem):
-                    clicked_item = clicked_item.parentItem()
+                if isinstance(self.clicked_item, QGraphicsTextItem):
+                    self.clicked_item = self.clicked_item.parentItem()
+                if isinstance(self.clicked_item, CostItem):
+                    self.clicked_item = self.clicked_item.parentItem()
 
-                if isinstance(clicked_item, NodeItem):
-                    for edge in list(clicked_item.edge_list):
+                if isinstance(self.clicked_item, NodeItem):
+                    for edge in list(self.clicked_item.edge_list):
                         self.graph.remove_edge(edge.source.node_id, edge.target.node_id)
                         self.delete_edge(edge)        
 
-                    self.deleted_nodes.append(clicked_item.node_id)
-                    self.graph.remove_node(clicked_item.node_id)
+                    self.deleted_nodes.append(self.clicked_item.node_id)
+                    self.graph.remove_node(self.clicked_item.node_id)
                     self.update_edges.emit()
                     self.update_nodes.emit()
-                    self.removeItem(clicked_item)
+                    self.removeItem(self.clicked_item)
 
-                if isinstance(clicked_item, EdgeItem):
+                if isinstance(self.clicked_item, EdgeItem):
                     if self.graph.isDirected == True:
-                        arc = clicked_item.source.has_other_arc(clicked_item.target)
+                        arc = self.clicked_item.source.has_other_arc(self.clicked_item.target)
                         if arc is not None:
                             arc.curveSign = 0
                             arc.update_path()
                             arc.cost.update_cost_position()
                     
-                    self.graph.remove_edge(clicked_item.source.node_id, clicked_item.target.node_id)
+                    self.graph.remove_edge(self.clicked_item.source.node_id, self.clicked_item.target.node_id)
                     self.update_edges.emit()
-                    self.delete_edge(clicked_item)
+                    self.delete_edge(self.clicked_item)
 
                 super().mousePressEvent(event) 
 
             case self.EDIT_MODE:
-                if clicked_item is None and self.last_clicked_item:
+                if self.clicked_item is None and self.last_clicked_item:
                     self.last_clicked_item.clearFocus()
                     self.last_clicked_item.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsFocusable, False)
 
                 else:
-                    if isinstance(clicked_item, NodeItem):
-                        clicked_item = clicked_item.label
-                    elif isinstance(clicked_item, CostItem):
-                        clicked_item = clicked_item.label
-                    elif isinstance(clicked_item, EdgeItem):
-                        clicked_item = clicked_item.cost.label
+                    if isinstance(self.clicked_item, NodeItem):
+                        self.clicked_item = self.clicked_item.label
+                    elif isinstance(self.clicked_item, CostItem):
+                        self.clicked_item = self.clicked_item.label
+                    elif isinstance(self.clicked_item, EdgeItem):
+                        self.clicked_item = self.clicked_item.cost.label
 
-                    clicked_item.setTextInteractionFlags(Qt.TextInteractionFlag.TextEditorInteraction)
-                    clicked_item.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsFocusable, True)
+                    self.clicked_item.setTextInteractionFlags(Qt.TextInteractionFlag.TextEditorInteraction)
+                    self.clicked_item.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsFocusable, True)
                     
-                    self.last_clicked_item = clicked_item
+                    self.last_clicked_item = self.clicked_item
+            
                 super().mousePressEvent(event)
         self.check_lists()
     
@@ -414,24 +432,25 @@ class MainWindow(QMainWindow):
         self.draw_action.triggered.connect(lambda: self.scene.set_mode(1))
         self.delete_action.triggered.connect(lambda: self.scene.set_mode(2))
         self.edit_action.triggered.connect(lambda: self.scene.set_mode(3))
-        self.directed_graph.triggered.connect(lambda: self.scene.set_directed_graph())
-        self.undirected_graph.triggered.connect(lambda: self.scene.set_undirected_graph())
-        
-        self.import_graph.triggered.connect(lambda: self.scene.import_graph_with_pos())
-        self.import_graph.triggered.connect(lambda: self.update_edge_table())
-        self.import_graph.triggered.connect(lambda: self.update_node_table())
 
-        self.export_graph.triggered.connect(lambda: self.scene.graph.export_graph())
+        self.directed_graph.triggered.connect(self.scene.set_directed_graph)
+        self.undirected_graph.triggered.connect(self.scene.set_undirected_graph)
         
-        import_with_pos.triggered.connect(lambda: self.scene.import_graph_with_pos())
-        import_with_pos.triggered.connect(lambda: self.update_edge_table())
-        import_with_pos.triggered.connect(lambda: self.update_node_table())
+        self.import_graph.triggered.connect(self.scene.import_graph_with_pos)
+        self.import_graph.triggered.connect(self.update_edge_table)
+        self.import_graph.triggered.connect(self.update_node_table)
+
+        import_with_pos.triggered.connect(self.scene.import_graph_with_pos)
+        import_with_pos.triggered.connect(self.update_edge_table)
+        import_with_pos.triggered.connect(self.update_node_table)
         
-        import_without_pos.triggered.connect(lambda: self.scene.import_graph_without_pos())
-        import_without_pos.triggered.connect(lambda: self.update_edge_table())
-        import_without_pos.triggered.connect(lambda: self.update_node_table())
+        import_without_pos.triggered.connect(self.scene.import_graph_without_pos)
+        import_without_pos.triggered.connect(self.update_edge_table)
+        import_without_pos.triggered.connect(self.update_node_table)
         
-        self.custom_code.triggered.connect(lambda: self.create_code_window())
+        self.export_graph.triggered.connect(self.scene.graph.export_graph)
+
+        self.custom_code.triggered.connect(self.create_code_window)
 
         self.scene.update_edges.connect(self.update_edge_table)
         self.scene.update_nodes.connect(self.update_node_table)
@@ -489,12 +508,16 @@ class MainWindow(QMainWindow):
         for row in range(0, len(edge_list), 3):
             source = QTableWidgetItem(str(edge_list[row]))
             target = QTableWidgetItem(str(edge_list[row + 1]))
-            cost = QTableWidgetItem('' if edge_list[row + 2] == 'None' else str(edge_list[row + 2]))
+            if edge_list[row + 2] == None or edge_list == "" or edge_list[row + 2] == "None":
+                cost_value = ""
+            else:
+                cost_value = edge_list[row + 2]
+            cost = QTableWidgetItem(str(cost_value))
 
             source_x, source_y = list(self.scene.graph.node_list[edge_list[row]])
             source_node = self.scene.itemAt(source_x, source_y, self.scene.views()[0].transform())
             source_node = source_node.parentItem()
-            print(source_node.node_id, source_x, source_y)
+            
             for edge in source_node.edge_list:
                 if edge.source is source_node and edge.target.node_id == edge_list[row + 1]:
                     item = edge
@@ -657,7 +680,6 @@ class MainWindow(QMainWindow):
                             new_target.edge_list.append(edge)
 
                             if self.scene.graph.isDirected:
-                                print("intra", edge.target.node_id, edge.source.node_id)
                                 second_arc = edge.source.has_other_arc(edge.target)
                                 if second_arc is not None:
                                     edge.curveSign = 1
@@ -681,7 +703,9 @@ class MainWindow(QMainWindow):
                 if item.text().isdigit() or item.text() == "" or item.text() == "None":
                     edge.cost.label.setPlainText(item.text())
                     edge.cost.setVisible(True)
+                    self.edge_table.blockSignals(True)
                     edge.cost.label.isValid()
+                    self.edge_table.blockSignals(False)
             
                 else:
                     self.edge_table.blockSignals(True)

@@ -42,7 +42,7 @@ class Graph():
         self.node_list[node] = [int(x), int(y)]
 
     def import_graph(self):
-        file = open('graph_data.txt', 'r')
+        file = open('graph', 'r')
         first_line = file.readline().strip()
 
         self.isDirected = True if first_line == "True" else False
@@ -65,7 +65,7 @@ class Graph():
                 self.edge_list.append(int(edges[i + 2]))
 
     def export_graph(self):
-        with open('graph_data.txt', 'w') as file:
+        with open('graph', 'w') as file:
             file.write(f"{self.isDirected}\n")
         
             node_data = []

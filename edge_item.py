@@ -15,7 +15,7 @@ class EdgeItem(QGraphicsPathItem):
         self.curveSign = curve_sign
 
         self.setPen(QPen(QColor("black"), 3))
-        self.setZValue(0)
+        self.setZValue(-1)
         
         self.update_path()
 

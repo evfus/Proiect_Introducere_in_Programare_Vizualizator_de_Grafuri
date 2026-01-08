@@ -110,3 +110,9 @@ class NodeItem(QGraphicsEllipseItem):
                 if edge.source is target and edge.target is self:
                     return edge
         return None
+    
+    def focused_color(self):
+        self.setPen(QPen(QColor("green"), 3))
+    
+    def unfocused_color(self):
+        self.setPen(QPen(QColor("black"), 3))
