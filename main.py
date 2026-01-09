@@ -3,7 +3,7 @@ from PySide6.QtWidgets import (QGraphicsView, QApplication, QMainWindow,
 QGraphicsItem, QGraphicsScene, QGraphicsEllipseItem, QGraphicsTextItem, 
 QGraphicsLineItem, QVBoxLayout, QSplitter, QDialog, QTableWidget, 
 QWidget, QTableWidgetItem, QHeaderView, QMenu, QTextEdit, QPushButton, 
-QMessageBox, QHBoxLayout)
+QMessageBox, QHBoxLayout, QFileDialog)
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QPainter, QAction, QPen, QColor, QImage
 import math
@@ -28,14 +28,32 @@ class GraphScene(QGraphicsScene):
         self.current_mode = self.DRAW_MODE
         self.node_counter = 0
         self.nodeID = 0
-        self.last_clicked_item = None
         self.clicked_item = None
+        self.last_clicked_item = None
         self.deleted_nodes = []
+        self.edge_preview = None
+
+    def clear_scene(self):
+        self.clear()
+        self.graph.node_list.clear()
+        self.graph.edge_list.clear()
+        self.update_nodes.emit()
+        self.update_edges.emit()
+        self.node_counter = 0
+        self.nodeID = 0
+        self.clicked_item = None
+        self.last_clicked_item = None
+        self.deleted_nodes.clear()
         self.edge_preview = None
 
     def import_graph_with_pos(self):
         self.clear()
-        self.graph.import_graph()
+        
+        file_path, _ = QFileDialog.getOpenFileName(caption = "Open Graph Source File", dir = "~/proiectIP/VizGraf_2.0")
+        if not file_path:
+            return
+        
+        self.graph.import_graph(file_path)
 
         node_list = self.graph.node_list
         edge_list = self.graph.edge_list
@@ -63,7 +81,12 @@ class GraphScene(QGraphicsScene):
 
     def import_graph_without_pos(self):
         self.clear()
-        self.graph.import_graph()
+
+        file_path, _ = QFileDialog.getOpenFileName(caption = "Open Graph Source File", dir = "~/proiectIP/VizGraf_2.0")
+        if not file_path:
+            return
+        
+        self.graph.import_graph(file_path)
 
         node_list = self.graph.node_list
         edge_list = self.graph.edge_list
@@ -103,10 +126,14 @@ class GraphScene(QGraphicsScene):
         self.update_edges.emit()
 
     def export(self):
-        self.graph.export_graph()
+        file_path, _ = QFileDialog.getSaveFileName(caption = "Export Graph", dir = "~/proiectIP/VizGraf_2.0")
+        if not file_path:
+            return
+
+        self.graph.export_graph(file_path)
 
     def export_scene_png(self):
-        if self.edge_preview is not None:
+        if self.edge_preview:
             self.stop_edge_preview()
         
         if self.clicked_item is not None:
@@ -123,10 +150,19 @@ class GraphScene(QGraphicsScene):
         painter = QPainter(image)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         
+        file_path, _ = QFileDialog.getSaveFileName(caption = "Export Graph as PNG", dir = "~/proiectIP/VizGraf_2.0")
+    
+        if not file_path:
+            painter.end()
+            return
+        
+        if not file_path.lower().endswith('.png'):
+            file_path += '.png'
+
         self.render(painter, image.rect(), area)
         painter.end()
         
-        image.save("graph.png", "PNG")
+        image.save(file_path, "PNG")
 
     def set_directed_graph(self):
         if self.graph.isDirected == True:
@@ -431,6 +467,7 @@ class MainWindow(QMainWindow):
         self.draw_action = QAction("Draw", self)
         self.delete_action = QAction("Delete", self)
         self.edit_action = QAction("Edit", self)
+        self.clear_scene = QAction("Clear Graph", self)
         self.directed_graph = QAction("Directed", self)
         self.undirected_graph = QAction("Undirected", self)
         self.import_graph = QAction("Import Graph", self)
@@ -455,6 +492,7 @@ class MainWindow(QMainWindow):
         self.toolbar.addAction(self.draw_action)
         self.toolbar.addAction(self.delete_action)
         self.toolbar.addAction(self.edit_action)
+        self.toolbar.addAction(self.clear_scene)
         self.toolbar.addAction(self.directed_graph)
         self.toolbar.addAction(self.undirected_graph)
         self.toolbar.addAction(self.import_graph)
@@ -466,6 +504,8 @@ class MainWindow(QMainWindow):
         self.delete_action.triggered.connect(lambda: self.scene.set_mode(2))
         self.edit_action.triggered.connect(lambda: self.scene.set_mode(3))
 
+        self.clear_scene.triggered.connect(self.scene.clear_scene)
+
         self.directed_graph.triggered.connect(self.scene.set_directed_graph)
         self.undirected_graph.triggered.connect(self.scene.set_undirected_graph)
         
@@ -473,7 +513,7 @@ class MainWindow(QMainWindow):
         import_with_pos.triggered.connect(self.scene.import_graph_with_pos)        
         import_without_pos.triggered.connect(self.scene.import_graph_without_pos)
         
-        self.export_graph.triggered.connect(self.scene.graph.export_graph)
+        self.export_graph.triggered.connect(self.scene.export)
         export_as_png.triggered.connect(self.scene.export_scene_png)
 
         self.custom_code.triggered.connect(self.create_code_window)

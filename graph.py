@@ -41,8 +41,8 @@ class Graph():
     def update_node_position(self, node, x, y):
         self.node_list[node] = [int(x), int(y)]
 
-    def import_graph(self):
-        file = open('graph', 'r')
+    def import_graph(self, file_path):
+        file = open(file_path, 'r')
         first_line = file.readline().strip()
 
         self.isDirected = True if first_line == "True" else False
@@ -64,8 +64,8 @@ class Graph():
             else:
                 self.edge_list.append(int(edges[i + 2]))
 
-    def export_graph(self):
-        with open('graph', 'w') as file:
+    def export_graph(self, file_path):
+        with open(file_path, 'w') as file:
             file.write(f"{self.isDirected}\n")
         
             node_data = []
