@@ -3,14 +3,15 @@ from PySide6.QtWidgets import (QGraphicsView, QApplication, QMainWindow,
 QGraphicsItem, QGraphicsScene, QGraphicsEllipseItem, QGraphicsTextItem, 
 QGraphicsLineItem, QVBoxLayout, QSplitter, QDialog, QTableWidget, 
 QWidget, QTableWidgetItem, QHeaderView, QMenu, QTextEdit, QPushButton, 
-QMessageBox, QHBoxLayout, QFileDialog)
-from PySide6.QtCore import Qt, Signal
+QMessageBox, QHBoxLayout, QFileDialog, QInputDialog, QMessageBox)
+from PySide6.QtCore import Qt, Signal, QTimer
 from PySide6.QtGui import QPainter, QAction, QPen, QColor, QImage
 import math
 from node_item import NodeItem, NodeLabelItem
 from edge_item import EdgeItem
 from cost_item import CostItem
 from graph import Graph
+from funct import dfs
 
 class GraphScene(QGraphicsScene):
     
@@ -472,7 +473,9 @@ class MainWindow(QMainWindow):
         self.undirected_graph = QAction("Undirected", self)
         self.import_graph = QAction("Import Graph", self)
         self.export_graph = QAction("Export Graph", self)
+        self.dfs_action = QAction("Run DFS", self)
         self.custom_code = QAction("Custom code", self)
+        self.custom_code = QAction("Functions", self)
 
         import_menu = QMenu(self)
         import_with_pos = QAction("With Positioning", self)
@@ -497,6 +500,7 @@ class MainWindow(QMainWindow):
         self.toolbar.addAction(self.undirected_graph)
         self.toolbar.addAction(self.import_graph)
         self.toolbar.addAction(self.export_graph)
+        self.toolbar.addAction(self.dfs_action)
         self.toolbar.addAction(self.custom_code)
 
         self.force_action.triggered.connect(lambda: self.scene.set_mode(0))
@@ -515,6 +519,8 @@ class MainWindow(QMainWindow):
         
         self.export_graph.triggered.connect(self.scene.export)
         export_as_png.triggered.connect(self.scene.export_scene_png)
+
+        self.dfs_action.triggered.connect(self.run_dfs)
 
         self.custom_code.triggered.connect(self.create_code_window)
 
@@ -781,6 +787,51 @@ class MainWindow(QMainWindow):
     def create_code_window(self):
         self.code_window = CodeEditWindow()
         self.code_window.show()
+    
+    def start_animation(self, node_ids_list):
+        if not node_ids_list:
+            return
+        
+        for item in self.scene.items():
+            if hasattr(item, 'unfocused_color'):
+                item.unfocused_color()
+
+        self.animation_step = 0
+        self.traversal_order = node_ids_list
+        
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.animate_next_node)
+        self.timer.start(1000)
+
+    def animate_next_node(self):
+        if self.animation_step < len(self.traversal_order):
+            node_id = self.traversal_order[self.animation_step]
+            for item in self.scene.items():
+                if hasattr(item, 'node_id') and item.node_id == node_id:
+                    item.focused_color()
+                    break
+            self.animation_step += 1
+        else:
+            self.timer.stop()
+
+    def run_dfs(self):
+        if not self.scene.graph.node_list:
+            return
+        available_nodes = [str(node_id) for node_id in self.scene.graph.node_list.keys()]
+        
+        node_id_str, ok = QInputDialog.getItem(
+            self, 
+            "Start DFS", 
+            "Alege nodul de start:", 
+            available_nodes, 
+            0, 
+            False
+        )
+        if ok and node_id_str:
+            start_node = int(node_id_str)
+
+        order_list = dfs(self.scene.graph, start_node)
+        self.start_animation(order_list)
 
 if __name__ == "__main__":
     app = QApplication([])
