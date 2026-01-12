@@ -805,6 +805,12 @@ class MainWindow(QMainWindow):
 
     def animate_next_node(self):
         if self.animation_step < len(self.traversal_order):
+            if self.animation_step > 0:
+                previous_node_id = self.traversal_order[self.animation_step - 1]
+                for item in self.scene.items():
+                    if hasattr(item, 'node_id') and item.node_id == previous_node_id:
+                        item.visited_color()
+                        break
             node_id = self.traversal_order[self.animation_step]
             for item in self.scene.items():
                 if hasattr(item, 'node_id') and item.node_id == node_id:
