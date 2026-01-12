@@ -11,7 +11,7 @@ from node_item import NodeItem, NodeLabelItem
 from edge_item import EdgeItem
 from cost_item import CostItem
 from graph import Graph
-from funct import dfs
+from funct import dfs,bfs
 
 class GraphScene(QGraphicsScene):
     
@@ -474,6 +474,7 @@ class MainWindow(QMainWindow):
         self.import_graph = QAction("Import Graph", self)
         self.export_graph = QAction("Export Graph", self)
         self.dfs_action = QAction("Run DFS", self)
+        self.bfs_action = QAction("Run BFS", self)
         self.custom_code = QAction("Custom code", self)
         self.custom_code = QAction("Functions", self)
 
@@ -501,6 +502,7 @@ class MainWindow(QMainWindow):
         self.toolbar.addAction(self.import_graph)
         self.toolbar.addAction(self.export_graph)
         self.toolbar.addAction(self.dfs_action)
+        self.toolbar.addAction(self.bfs_action)
         self.toolbar.addAction(self.custom_code)
 
         self.force_action.triggered.connect(lambda: self.scene.set_mode(0))
@@ -521,6 +523,8 @@ class MainWindow(QMainWindow):
         export_as_png.triggered.connect(self.scene.export_scene_png)
 
         self.dfs_action.triggered.connect(self.run_dfs)
+
+        self.bfs_action.triggered.connect(self.run_bfs)
 
         self.custom_code.triggered.connect(self.create_code_window)
 
@@ -811,6 +815,7 @@ class MainWindow(QMainWindow):
                     if hasattr(item, 'node_id') and item.node_id == previous_node_id:
                         item.visited_color()
                         break
+                    
             node_id = self.traversal_order[self.animation_step]
             for item in self.scene.items():
                 if hasattr(item, 'node_id') and item.node_id == node_id:
@@ -823,21 +828,26 @@ class MainWindow(QMainWindow):
     def run_dfs(self):
         if not self.scene.graph.node_list:
             return
-        available_nodes = [str(node_id) for node_id in self.scene.graph.node_list.keys()]
         
-        node_id_str, ok = QInputDialog.getItem(
-            self, 
-            "Start DFS", 
-            "Alege nodul de start:", 
-            available_nodes, 
-            0, 
-            False
-        )
+        available_nodes = [str(node_id) for node_id in self.scene.graph.node_list.keys()]
+        node_id_str, ok = QInputDialog.getItem(self, "Start DFS", "Alege nodul de start:", available_nodes, 0, False)
+
         if ok and node_id_str:
             start_node = int(node_id_str)
+            order_list = dfs(self.scene.graph, start_node)
+            self.start_animation(order_list)
+    
+    def run_bfs(self):
+        if not self.scene.graph.node_list:
+            return
+            
+        available_nodes = [str(node_id) for node_id in self.scene.graph.node_list.keys()]
+        node_id_str, ok = QInputDialog.getItem(self, "Start BFS", "Alege nodul de start:", available_nodes, 0, False)
 
-        order_list = dfs(self.scene.graph, start_node)
-        self.start_animation(order_list)
+        if ok and node_id_str:
+            start_node = int(node_id_str)      
+            order_list = bfs(self.scene.graph, start_node)
+            self.start_animation(order_list)
 
 if __name__ == "__main__":
     app = QApplication([])
