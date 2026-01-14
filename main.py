@@ -11,7 +11,7 @@ from node_item import NodeItem, NodeLabelItem
 from edge_item import EdgeItem
 from cost_item import CostItem
 from graph import Graph
-from funct import dfs,bfs
+from funct import dfs,bfs,dijkstra
 
 class GraphScene(QGraphicsScene):
     
@@ -500,8 +500,7 @@ class MainWindow(QMainWindow):
         self.undirected_graph = QAction("Undirected", self)
         self.import_graph = QAction("Import Graph", self)
         self.export_graph = QAction("Export Graph", self)
-        self.dfs_action = QAction("Run DFS", self)
-        self.bfs_action = QAction("Run BFS", self)
+        self.algo_action = QAction("Algoritmi", self)
         self.custom_code = QAction("Functions", self)
 
         import_menu = QMenu(self)
@@ -517,6 +516,16 @@ class MainWindow(QMainWindow):
 
         export_menu.addAction(export_as_png)
         self.export_graph.setMenu(export_menu)
+
+        algo_menu = QMenu(self)
+        self.dfs_action = QAction("Run DFS", self)
+        self.bfs_action = QAction("Run BFS", self)
+        self.dijkstra_action = QAction("Run Dijkstra", self)
+
+        algo_menu.addAction(self.dfs_action)
+        algo_menu.addAction(self.bfs_action)
+        algo_menu.addAction(self.dijkstra_action)
+        self.algo_action.setMenu(algo_menu)
         
         self.toolbar.addAction(self.force_action)
         self.toolbar.addAction(self.draw_action)
@@ -527,8 +536,7 @@ class MainWindow(QMainWindow):
         self.toolbar.addAction(self.undirected_graph)
         self.toolbar.addAction(self.import_graph)
         self.toolbar.addAction(self.export_graph)
-        self.toolbar.addAction(self.dfs_action)
-        self.toolbar.addAction(self.bfs_action)
+        self.toolbar.addAction(self.algo_action)
         self.toolbar.addAction(self.custom_code)
 
         self.force_action.triggered.connect(lambda: self.scene.set_mode(0))
@@ -549,8 +557,8 @@ class MainWindow(QMainWindow):
         export_as_png.triggered.connect(self.scene.export_scene_png)
 
         self.dfs_action.triggered.connect(self.run_dfs)
-
         self.bfs_action.triggered.connect(self.run_bfs)
+        self.dijkstra_action.triggered.connect(self.run_dijkstra)
 
         self.custom_code.triggered.connect(self.create_code_window)
 
@@ -950,6 +958,34 @@ class MainWindow(QMainWindow):
             start_node = int(node_id_str)      
             order_list = bfs(self.scene.graph, start_node)
             self.start_animation(order_list)
+    
+    def run_dijkstra(self):
+        if not self.scene.graph.node_list:
+            return
+            
+        available_nodes = [str(node_id) for node_id in self.scene.graph.node_list.keys()]
+        
+        start_id, ok1 = QInputDialog.getItem(self, "Dijkstra", "Selectează Sursa:", available_nodes, 0, False)
+        if not ok1: return      #sursa
+        
+        target_id, ok2 = QInputDialog.getItem(self, "Dijkstra", "Selectează Destinația:", available_nodes, 0, False)
+        if not ok2: return      #destinatie
+
+        result = dijkstra(self.scene.graph, int(start_id), int(target_id))
+
+        if result == "ERROR_COST":
+            QMessageBox.critical(self, "Eroare Costuri", "Toate muchiile trebuie să aibă un cost valid pentru Dijkstra!")
+            return
+            
+        if not result:
+            QMessageBox.information(self, "Info", "Nu există drum între aceste noduri.")
+            return
+
+        for item in self.scene.items():
+            if hasattr(item, 'unfocused_color'):
+                item.unfocused_color()
+        
+        self.start_animation(result)
 
 if __name__ == "__main__":
     app = QApplication([])
