@@ -3,7 +3,7 @@ from PySide6.QtWidgets import (QGraphicsView, QApplication, QMainWindow,
 QGraphicsItem, QGraphicsScene, QGraphicsEllipseItem, QGraphicsTextItem, 
 QGraphicsLineItem, QVBoxLayout, QSplitter, QDialog, QTableWidget, 
 QWidget, QTableWidgetItem, QHeaderView, QMenu, QTextEdit, QPushButton, 
-QMessageBox, QHBoxLayout, QFileDialog, QInputDialog, QMessageBox)
+QMessageBox, QHBoxLayout, QFileDialog, QInputDialog, QMessageBox, QLabel)
 from PySide6.QtCore import Qt, Signal, QTimer
 from PySide6.QtGui import QPainter, QAction, QPen, QColor, QImage
 import math
@@ -230,7 +230,7 @@ class GraphScene(QGraphicsScene):
         self.edge_preview = QGraphicsLineItem()
         
         self.edge_preview.setPen(QPen(QColor("black"), 2))
-        self.edge_preview.setZValue(-1)
+        self.edge_preview.setZValue(-2)
 
         pos = self.last_clicked_item.scenePos()
         self.edge_preview.setLine(pos.x(), pos.y(), pos.x(), pos.y())
@@ -263,6 +263,9 @@ class GraphScene(QGraphicsScene):
         x = event.scenePos().x()
         y = event.scenePos().y()
         
+        if isinstance(self.clicked_item, QGraphicsLineItem):
+            self.stop_edge_preview()
+
         if self.clicked_item is not None:
             if isinstance(self.clicked_item, NodeItem):
                 self.clicked_item.unfocused_color()
@@ -407,17 +410,26 @@ class GraphView(QGraphicsView):
 class CodeEditWindow(QWidget):
     def __init__(self):
         super().__init__()
+
         self.setWindowTitle("Custom Code Editor")
         self.resize(400, 300)
 
         layout = QVBoxLayout(self)
         buttons_layout = QHBoxLayout()
         layout.addLayout(buttons_layout)
+        
+        file_path, _ = QFileDialog.getOpenFileName(caption = "Open Algorithm Source File", dir = "~/proiectIP/VizGraf_2.0")
 
         self.code_editor = QTextEdit()
-        self.code_editor.setPlaceholderText("Write your python code here:")
         layout.addWidget(self.code_editor)
-
+        
+        if not file_path:
+            self.code_editor.setPlaceholderText("Write your python code here:")
+        else:
+            file = open(file_path, 'r')
+            algorithm = file.read()
+            self.code_editor.setPlainText(algorithm)
+        
         self.run_button = QPushButton("Run")
         self.run_button.clicked.connect(self.run_code)
         buttons_layout.addWidget(self.run_button)
@@ -426,11 +438,24 @@ class CodeEditWindow(QWidget):
         self.clear_button.clicked.connect(self.code_editor.clear)
         buttons_layout.addWidget(self.clear_button)
 
+        self.import_algo_button = QPushButton("Import Algorithm")
+        self.import_algo_button.clicked.connect(self.update_code_window)
+        buttons_layout.addWidget(self.import_algo_button)
+
+
         buttons_layout.addStretch()
+
+    def update_code_window(self):
+        file_path, _ = QFileDialog.getOpenFileName(caption = "Open Algorithm Source File")
+
+        if file_path:
+            file = open(file_path, 'r')
+            algorithm = file.read()
+            self.code_editor.setPlainText(algorithm)
 
     def run_code(self):
         code = self.code_editor.toPlainText()
-        
+        print("")
         try:
             exec(code)
         except Exception as e:
@@ -453,7 +478,9 @@ class MainWindow(QMainWindow):
         right_panel = QWidget()
         right_layout = QVBoxLayout(right_panel)
 
+        right_layout.addWidget(QLabel("Node List"))
         right_layout.addWidget(self.node_table)
+        right_layout.addWidget(QLabel("Edge List"))
         right_layout.addWidget(self.edge_table)
 
         splitter = QSplitter(Qt.Horizontal)
@@ -475,7 +502,6 @@ class MainWindow(QMainWindow):
         self.export_graph = QAction("Export Graph", self)
         self.dfs_action = QAction("Run DFS", self)
         self.bfs_action = QAction("Run BFS", self)
-        self.custom_code = QAction("Custom code", self)
         self.custom_code = QAction("Functions", self)
 
         import_menu = QMenu(self)
@@ -553,7 +579,7 @@ class MainWindow(QMainWindow):
         node_list = self.scene.graph.node_list
 
         self.node_table.blockSignals(True)
-        self.node_table.setRowCount(len(node_list))
+        self.node_table.setRowCount(len(node_list) + 1)
 
         for row in range(len(node_list)):
             node, position = list(node_list.items())[row]
@@ -572,6 +598,10 @@ class MainWindow(QMainWindow):
             self.node_table.setItem(row, 0, id)
             self.node_table.setItem(row, 1, x)
             self.node_table.setItem(row, 2, y)
+        
+        self.node_table.setItem(len(node_list), 0, QTableWidgetItem(""))
+        self.node_table.setItem(len(node_list), 1, QTableWidgetItem(""))
+        self.node_table.setItem(len(node_list), 2, QTableWidgetItem(""))
         
         self.node_table.blockSignals(False)
         
@@ -611,46 +641,118 @@ class MainWindow(QMainWindow):
 
     def node_table_change(self, item: QTableWidgetItem):
         node = item.data(Qt.UserRole)
-        match item.column():
-            case 0:
-                new_id = item.text()
-                if new_id.isdigit():
-                    node.label.setPlainText(str(new_id))
-                    node.label.isValid()
-                    self.update_edge_table()
+        node_list = self.scene.graph.node_list
+        if node is not None:
+            match item.column():
+                case 0:
+                    new_id = item.text()
+                    if new_id.isdigit():
+                        node.label.setPlainText(str(new_id))
+                        node.label.isValid()
+                        self.update_edge_table()
 
-                    if node.node_id != int(new_id):
+                        if node.node_id != int(new_id):
+                            self.node_table.blockSignals(True)
+                            item.setText(str(node.node_id))
+                            self.node_table.blockSignals(False)
+                    else:
                         self.node_table.blockSignals(True)
                         item.setText(str(node.node_id))
                         self.node_table.blockSignals(False)
-                else:
-                    self.node_table.blockSignals(True)
-                    item.setText(str(node.node_id))
-                    self.node_table.blockSignals(False)
-            
-            case 1:
-                new_x = item.text()
-                try:
-                    float(new_x)
-                except ValueError:
-                    return
-                node.setPos(float(new_x), node.scenePos().y())
-                for edge in node.edge_list:
-                    edge.update_path()
-                    edge.cost.update_cost_position()
-                self.scene.graph.update_node_position(node.node_id, new_x, int(node.scenePos().y()))
-            
-            case 2:
-                new_y = item.text()
-                try:
-                    float(new_y)
-                except ValueError:
-                    return
-                node.setPos(node.scenePos().x(), float(new_y))
-                for edge in node.edge_list:
-                    edge.update_path()
-                    edge.cost.update_cost_position()
-                self.scene.graph.update_node_position(node.node_id, int(node.scenePos().x()), new_y)
+
+                case 1:
+                    new_x = item.text()
+                    try:
+                        float(new_x)
+                    except ValueError:
+                        return
+                    node.setPos(float(new_x), node.scenePos().y())
+                    for edge in node.edge_list:
+                        edge.update_path()
+                        edge.cost.update_cost_position()
+                    self.scene.graph.update_node_position(node.node_id, new_x, int(node.scenePos().y()))
+
+                case 2:
+                    new_y = item.text()
+                    try:
+                        float(new_y)
+                    except ValueError:
+                        return
+                    node.setPos(node.scenePos().x(), float(new_y))
+                    for edge in node.edge_list:
+                        edge.update_path()
+                        edge.cost.update_cost_position()
+                    self.scene.graph.update_node_position(node.node_id, int(node.scenePos().x()), new_y)
+        else:
+            match item.column():
+                case 0:
+                    nodeID = item.text()
+
+                    if nodeID.isdigit():
+                        nodeID = int(nodeID)
+
+                        if nodeID not in node_list.keys():
+                            if nodeID in self.scene.deleted_nodes:
+                                self.scene.deleted_nodes.remove(nodeID)
+
+                            node_list[nodeID] = [400, 400]
+
+                            node = NodeItem(400, 400, nodeID)
+                            self.scene.addItem(node)
+                            
+                            window.update_node_table()
+                    else:
+                        self.node_table.blockSignals(True)
+                        item.setText("")
+                        self.node_table.blockSignals(False)
+                
+                case 1:
+                    nodeX = item.text()
+                    if nodeX.isdigit():
+                        nodeX = int(nodeX)
+                        if not self.scene.deleted_nodes:
+                                self.scene.node_counter += 1
+                                while self.scene.node_counter in node_list:
+                                    self.scene.node_counter += 1
+
+                                nodeID = self.scene.node_counter
+                        else:
+                            nodeID = self.scene.min_node()
+                            self.scene.deleted_nodes.remove(nodeID)
+
+                        node_list[nodeID] = [nodeX, 400]
+                        node = NodeItem(nodeX, 400, nodeID)
+                        self.scene.addItem(node)
+
+                        window.update_node_table()
+                    else:
+                        self.node_table.blockSignals(True)
+                        item.setText("")
+                        self.node_table.blockSignals(False)
+
+                case 2:
+                    nodeY = item.text()
+                    if nodeY.isdigit():
+                        nodeY = int(nodeY)
+                        if not self.scene.deleted_nodes:
+                                self.scene.node_counter += 1
+                                while self.scene.node_counter in node_list:
+                                    self.scene.node_counter += 1
+
+                                nodeID = self.scene.node_counter
+                        else:
+                            nodeID = self.scene.min_node()
+                            self.scene.deleted_nodes.remove(nodeID)
+
+                        node_list[nodeID] = [400, nodeY]
+                        node = NodeItem(400, nodeY, nodeID)
+                        self.scene.addItem(node)
+
+                        window.update_node_table()
+                    else:
+                        self.node_table.blockSignals(True)
+                        item.setText("")
+                        self.node_table.blockSignals(False)
 
     def edge_table_change(self, item: QTableWidgetItem):
         edge = item.data(Qt.UserRole)
@@ -854,4 +956,5 @@ if __name__ == "__main__":
     window = MainWindow()
     window.resize(1200, 800)
     window.show()
+    window.update_node_table()
     sys.exit(app.exec())

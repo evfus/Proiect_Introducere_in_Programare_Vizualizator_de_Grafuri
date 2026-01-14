@@ -113,11 +113,11 @@ class NodeItem(QGraphicsEllipseItem):
     
     def focused_color(self):
         self.setPen(QPen(QColor("green"), 4))
-        self.setBrush(QBrush(QColor(144, 238, 144, 150))) 
+        self.setBrush(QBrush(QColor(144, 238, 144, 255))) 
 
     def visited_color(self):
         self.setPen(QPen(QColor("gray"), 3))
-        self.setBrush(QBrush(QColor(211, 211, 211, 150)))
+        self.setBrush(QBrush(QColor(211, 211, 211, 255)))
 
     def unfocused_color(self):
         self.setPen(QPen(QColor("black"), 3))
