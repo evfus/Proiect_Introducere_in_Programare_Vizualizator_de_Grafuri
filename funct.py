@@ -4,8 +4,6 @@ import heapq
 #prezenta visited este doar pt eficenta mergand pe baza de hash-uri, aceasta poate fi scoasa si inlocuita doar de order daca nu cont eficenta
 
 def dfs(graph_obj, start_node, visited=None, order=None):
-    if start_node%2 == 0:
-        return
     if visited is None:
         visited = set()
     if order is None:
@@ -18,7 +16,7 @@ def dfs(graph_obj, start_node, visited=None, order=None):
     for i in range(0, len(graph_obj.edge_list), 3):
         u = graph_obj.edge_list[i]
         v = graph_obj.edge_list[i+1]
-        if u == start_node and u%2!=0:
+        if u == start_node:
             neighbors.append(v)
         elif not graph_obj.isDirected and v == start_node:
             neighbors.append(u)
