@@ -1,3 +1,4 @@
+import networkx as nx
 class Graph():
     def __init__(self):
         self.node_list={}
@@ -80,3 +81,40 @@ class Graph():
                 cost = self.edge_list[i+2]
                 edge_data.extend([str(u), str(v), str(cost)])
             file.write(" ".join(edge_data) + "\n")
+    
+    def export_as_dimacs(self, file_path):
+        if not file_path:
+            return
+        
+        file = open(file_path, 'w')
+        
+        problem_type = 'sp' if self.isDirected else 'p'
+        node_count = len(self.node_list)
+        edge_count = int(len(self.edge_list) / 3)
+        
+        file.write(f"{problem_type} {node_count} {edge_count}\n")
+
+        edge = 'a' if self.isDirected else 'e'
+
+        for i in range(0, len(self.edge_list), 3):
+            cost = "" if self.edge_list[i + 2] == "None" or self.edge_list[i + 2] is None else self.edge_list[i+2]
+            file.write(f"{edge} {self.edge_list[i]} {self.edge_list[i + 1]} {cost}\n")
+
+    def export_as_graphml(self, file_path):
+        if not file_path:
+            return
+
+        file = open(file_path, 'w')
+
+        nxGraph = nx.DiGraph() if self.isDirected else nx.Graph()
+
+        for node, pos in self.node_list.items():
+            nxGraph.add_node(node, x = pos[0], y = pos[1])
+        
+        for i in range(0, len(self.edge_list), 3):
+            source = self.edge_list[i]
+            target = self.edge_list[i + 1]
+            cost = self.edge_list[i + 2]
+            nxGraph.add_edge(source, target, weight = cost)
+
+        nx.write_graphml(nxGraph, file_path)

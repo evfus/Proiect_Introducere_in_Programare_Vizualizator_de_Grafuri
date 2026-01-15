@@ -502,6 +502,7 @@ class MainWindow(QMainWindow):
         self.export_graph = QAction("Export Graph", self)
         self.algo_action = QAction("Algoritmi", self)
         self.custom_code = QAction("Functions", self)
+        self.clear_animation = QAction("Clear Animation", self)
 
         import_menu = QMenu(self)
         import_with_pos = QAction("With Positioning", self)
@@ -513,8 +514,12 @@ class MainWindow(QMainWindow):
 
         export_menu = QMenu(self)
         export_as_png = QAction("As PNG", self)
+        export_as_dimacs = QAction("Dimacs Format", self)
+        export_as_graphml = QAction("GraphML Format", self)
 
         export_menu.addAction(export_as_png)
+        export_menu.addAction(export_as_dimacs)
+        export_menu.addAction(export_as_graphml)
         self.export_graph.setMenu(export_menu)
 
         algo_menu = QMenu(self)
@@ -538,6 +543,7 @@ class MainWindow(QMainWindow):
         self.toolbar.addAction(self.export_graph)
         self.toolbar.addAction(self.algo_action)
         self.toolbar.addAction(self.custom_code)
+        self.toolbar.addAction(self.clear_animation)
 
         self.force_action.triggered.connect(lambda: self.scene.set_mode(0))
         self.draw_action.triggered.connect(lambda: self.scene.set_mode(1))
@@ -555,18 +561,42 @@ class MainWindow(QMainWindow):
         
         self.export_graph.triggered.connect(self.scene.export)
         export_as_png.triggered.connect(self.scene.export_scene_png)
+        export_as_dimacs.triggered.connect(self.export_graph_as_dimacs)
+        export_as_graphml.triggered.connect(self.export_graph_as_grahphml)
 
         self.dfs_action.triggered.connect(self.run_dfs)
         self.bfs_action.triggered.connect(self.run_bfs)
         self.dijkstra_action.triggered.connect(self.run_dijkstra)
 
         self.custom_code.triggered.connect(self.create_code_window)
+        
+        self.clear_animation.triggered.connect(self.clearAnimation)
 
         self.scene.update_edges.connect(self.update_edge_table)
         self.scene.update_nodes.connect(self.update_node_table)
 
         self.node_table.itemChanged.connect(self.node_table_change)
         self.edge_table.itemChanged.connect(self.edge_table_change)
+
+
+    def clearAnimation(self):
+        node_list = self.scene.graph.node_list
+
+        for nodeID in node_list.keys():
+            x = node_list[nodeID][0]
+            y = node_list[nodeID][1]
+            
+            item = self.scene.itemAt(x, y, self.scene.views()[0].transform())
+            item = item.parentItem()
+            item.unfocused_color()
+
+    def export_graph_as_dimacs(self):
+        file_path, _ = QFileDialog.getSaveFileName(caption = "Save Graph As Dimacs", dir = "~/proiectIP/VizGraf_2.0")
+        self.scene.graph.export_as_dimacs(file_path)
+    
+    def export_graph_as_grahphml(self):
+        file_path, _ = QFileDialog.getSaveFileName(caption = "Save Graph As GraphML", dir = "~/proiectIP/VizGraf_2.0")
+        self.scene.graph.export_as_graphml(file_path)
 
     def setup_node_table(self):
         self.node_table.setColumnCount(3)

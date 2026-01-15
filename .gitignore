@@ -4,3 +4,6 @@ graph
 tests.py
 .vscode
 graph_export.png
+export_test
+test_dimacs
+test_graphml
